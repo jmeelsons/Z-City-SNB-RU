@@ -132,13 +132,19 @@ SWEP.AnimList = {
 }
 SWEP.AnimsEvents = {
 	["base_reload_insert"] = {
-		[0.0] = function(self)
+		[0.0] = function(self, mdl)
 			self:EmitSound("weapons/arccw_ud/870/shell-insert-0"..math.random(1,3)..".ogg")
+			mdl:ManipulateBoneScale(mdl:LookupBone("Shell"), Vector(1, 1, 1))
 			--
 			--self:GetWM():ManipulateBoneScale(47, vector_full)
 		end,
-		[0.8] = function(self)
+		[0.8] = function(self, mdl)
 			--self:GetWM():ManipulateBoneScale(47, vector_origin)
+		end,
+	},
+	["base_reload_end"] = {
+		[0.0] = function(self, mdl)
+			mdl:ManipulateBoneScale(mdl:LookupBone("Shell"), vector_origin)
 		end,
 	},
 	["base_fire_cock_2"] = {
@@ -198,6 +204,10 @@ function SWEP:DrawPost() --!! оно на груди не видно а еще �
 		self.BMerge:DrawModel()
 	end
 end]]
+
+function SWEP:ModelCreated(mdl)
+	mdl:ManipulateBoneScale(mdl:LookupBone("Shell"), vector_origin)
+end
 
 function SWEP:AnimationPost()
 	local animpos = math.Clamp(self:GetAnimPos_Draw(CurTime()),0,1)
