@@ -769,3 +769,31 @@ hook.Add("OnEntityWaterLevelChanged", "ClearBlood", function(ent, old, new)
 		ent:RemoveAllDecals()
 	end
 end)
+
+concommand.Add("hg_god", function(ply, cmd, args)
+    if not ply:IsAdmin() then
+        ply:ChatPrint("You need admin privileges to use this command.")
+        return
+    end
+    
+    local target = ply
+    if args[1] then
+        target = player.GetByName(args[1])
+        if not IsValid(target) then
+            ply:ChatPrint("Player not found.")
+            return
+        end
+    end
+    
+    if not target.organism then
+        ply:ChatPrint("Target does not have an organism.")
+        return
+    end
+    
+    target.organism.godmode = not (target.organism.godmode or false)
+    local msg = "God mode " .. (target.organism.godmode and "enabled" or "disabled") .. " for " .. (target == ply and "you" or target:Name())
+    ply:ChatPrint(msg)
+    if target ~= ply then
+        target:ChatPrint("God mode " .. (target.organism.godmode and "enabled" or "disabled") .. " by " .. ply:Name())
+    end
+end)
