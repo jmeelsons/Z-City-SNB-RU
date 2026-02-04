@@ -121,19 +121,22 @@ function SWEP:SetHold(value)
     self.holdtype = value
 end
 
-function SWEP:InUse()
-    local ply = self:GetOwner()
-    if !IsValid(ply) then return end
-    local ent = IsValid(ply.FakeRagdoll) and ply.FakeRagdoll or ply
-    local org = ply.organism
+function SWEP:KeyDown(key)
+	return hg.KeyDown(self:GetOwner(),key)
+end
 
-    local power = ply:GetNWFloat("power", 1)
+function SWEP:InUse()
+	local ply = self:GetOwner()
+	local ent = IsValid(ply.FakeRagdoll) and ply.FakeRagdoll or ply
+	local org = ply.organism
+
+	local power = ply:GetNWFloat("power", 1)
 
 	if power < 0.4 and ent != ply then
 		return false
 	end
-    
-    return (ent == ply or hg.KeyDown(ply, IN_USE) or IsValid(ply.OldRagdoll))
+
+	return ( ((not ply.InVehicle || !ply:InVehicle()) and !hg.RagdollCombatInUse(ply)) && self:KeyDown(IN_USE)) || ((ply.InVehicle && ply:InVehicle() or hg.RagdollCombatInUse(ply) or ent == ply) && not self:KeyDown(IN_USE)) || (IsValid(ply.OldRagdoll))
 end
 
 SWEP.modelscale = 1
@@ -575,8 +578,8 @@ function SWEP:SetHandPos(noset)
 	if !IsValid(wm) then return end
 	-- ent:SetupBones()
 
-	self.rhandik = self.setrh and IsValid(owner) and (ent == owner or hg.KeyDown(owner,IN_USE) or (IsValid(ply.OldRagdoll)))//self.setrh
-	self.lhandik = self.setlh and IsValid(owner) and (ent == owner or hg.KeyDown(owner,IN_USE) or (IsValid(ply.OldRagdoll))) and (ply:GetTable().ChatGestureWeight < 0.1) and hg.CanUseLeftHand(ply) and !(owner.suiciding and self.SuicideNoLH)
+	self.rhandik = self.setrh and IsValid(owner)//self.setrh
+	self.lhandik = self.setlh and IsValid(owner) (ply:GetTable().ChatGestureWeight < 0.1) and hg.CanUseLeftHand(ply) and !(owner.suiciding and self.SuicideNoLH)
 
     local rhmat, lhmat = ent:GetBoneMatrix(ent:LookupBone("ValveBiped.Bip01_R_Hand")), ent:GetBoneMatrix(ent:LookupBone("ValveBiped.Bip01_L_Hand"))
 
