@@ -66,6 +66,7 @@
 			local matrix = ent:GetBoneMatrix(bone)
 			if not matrix then return end
 			local inv_matrix = matrix:GetInverse()
+			if not inv_matrix then return end -- this is shit...
 
 			local children = hg.get_children(ent, bone, endbone)
 
