@@ -611,18 +611,27 @@ hook.Add("Think", "Fake", function()
 						if IsValid(cons) then
 							ragdoll.cooldownLH = time + 0.5
 							ragdoll.ConsLH = cons
+
+							cons:CallOnRemove("fingersback", function()
+								for i = 1, 4 do
+									if not ragdoll:LookupBone("ValveBiped.Bip01_L_Finger" .. tostring(i) .. "1") then continue end
+									ragdoll:ManipulateBoneAngles(ragdoll:LookupBone("ValveBiped.Bip01_L_Finger" .. tostring(i) .. "1"), Angle(0, 0, 0))
+								end
+							end)
+
 							cons.choking = choking
+
 							ragdoll:EmitSound("physics/body/body_medium_impact_soft" .. math.random(1, 7) .. ".wav", 50, math.random(95, 105))
+							
 							for i = 1, 4 do
 								if not ragdoll:LookupBone("ValveBiped.Bip01_L_Finger" .. tostring(i) .. "1") then continue end
 								ragdoll:ManipulateBoneAngles(ragdoll:LookupBone("ValveBiped.Bip01_L_Finger" .. tostring(i) .. "1"), Angle(0, -45, 0))
 							end
-							--pedor ny norm
 						end
 
 						local useent = (IsValid(ent) and ent.Use and ent) or false 
 						if useent and not useent:IsVehicle() then useent:Use(ply) end
-						--DA NORM SAM PEDOR!!!!
+
 						local wep = ent:IsWeapon() and ent or false
 						ply.force_pickup = true
 						if IsValid(wep) and hook.Run("PlayerCanPickupWeapon", ply, wep) then ply:PickupWeapon(wep) end
@@ -679,8 +688,18 @@ hook.Add("Think", "Fake", function()
 						if IsValid(cons) then
 							ragdoll.cooldownRH = time + 0.5
 							ragdoll.ConsRH = cons
+
+							cons:CallOnRemove("fingersback", function()
+								for i = 1, 4 do
+									if not ragdoll:LookupBone("ValveBiped.Bip01_L_Finger" .. tostring(i) .. "1") then continue end
+									ragdoll:ManipulateBoneAngles(ragdoll:LookupBone("ValveBiped.Bip01_L_Finger" .. tostring(i) .. "1"), Angle(0, 0, 0))
+								end
+							end)
+
 							cons.choking = choking
+
 							ragdoll:EmitSound("physics/body/body_medium_impact_soft" .. math.random(1, 7) .. ".wav", 55, math.random(95, 105))
+							
 							for i = 1, 4 do
 								if not ragdoll:LookupBone("ValveBiped.Bip01_R_Finger" .. tostring(i) .. "1") then continue end
 								ragdoll:ManipulateBoneAngles(ragdoll:LookupBone("ValveBiped.Bip01_R_Finger" .. tostring(i) .. "1"), Angle(0, -45, 0))
