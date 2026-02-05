@@ -350,7 +350,7 @@ function DrawAppearance(ent, ply, setup)
 			render.DrawSprite(ply.flmodel:GetPos() + ply.flmodel:GetAngles():Forward() * 5 + ply.flmodel:GetAngles():Right() * -0.5, 50 * math.min(deg, 0), 50 * math.min(deg, 0), color_white)
 		end
 	else
-		if ply.flashlight and ply.flashlight:IsValid() then
+		if ply.flashlight and IsValid(ply.flashlight) then
 			ply.flashlight:Remove()
 			ply.flashlight = nil
 		end

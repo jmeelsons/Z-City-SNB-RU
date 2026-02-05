@@ -158,11 +158,12 @@ local sounds = {
 	Sound("player/zombie_head_explode_06.wav")
 }
 
+local ents_Create = ents.Create
 function hg.organism.AmputateLimb(org, limb)
 	if org[limb.."amputated"] == nil then return end
 
 	local bone = limbs[limb]
-
+	if !IsValid(org.owner) then return end
 	local len = org.owner:BoneLength(org.owner:LookupBone(bone))
 	local vec = Vector(len, 0, 0)
 	local ang = Angle()
@@ -193,6 +194,8 @@ function hg.organism.AmputateLimb(org, limb)
 	
 	local ent = hg.GetCurrentCharacter(org.owner)
 	SpawnMeatGore(ent, select(1, ent:GetBonePosition(ent:LookupBone(bone))), 4)
+
+	hook.Run("OnAmputateLimb", org, ent, limb)
 
 	net.Start("organism_send")
 	local tbl = {}
@@ -371,36 +374,6 @@ function hg.NPCDamage(ent,dmgInfo,npcdmg)
 	end
 end
 
-GLOBALLIST = {
-	["76561198797549224"] = true, -- spac3
-	["76561198170506041"] = true, -- maleyvich
-	--["76561198298055186"] = true, -- krytoi skilet
-	["76561198964791142"] = true, -- ilyasikdum
-	["76561198233785972"] = true, -- haveaniceday
-	["76561199358860229"] = true, -- checha
-	["76561198390659133"] = true, -- 0oa
-	["76561199059860042"] = true, -- ded
-	["76561199482545788"] = true, -- niko heizenberg
-	["76561198963528067"] = true, -- vigy vigy vigy
-	["76561198345387667"] = true, -- f0cus
-	["76561199023694865"] = true, -- f0cus alt
-	["76561199830240723"] = true, -- checha alt
-	["76561199182790603"] = true, -- jmeelson
-	["76561199126041062"] = true, -- medic
-	["76561198318883131"] = true, -- sidead
-	["76561199058335083"] = true, -- kirik alt
-	["76561199240244612"] = true, -- kirik
-	["76561199358733991"] = true, -- telepuzik
-	["76561199161395664"] = true, -- bombom
-	["76561198893264087"] = true, -- codeorange
-}
-
-hook.Add("PostEntityFireBullets","donthittwice",function(ent,data)
-	--if data.Trace.Entity:IsPlayer() and IsValid(data.Trace.Entity.FakeRagdoll) then
-		--data.Trace.Entity = data.Trace.Entity.FakeRagdoll
-	--end
-end)
-
 function hg.AddHarmToAttacker(dmgInfo, harm, reason)
 	local ply = dmgInfo:GetAttacker()
 
@@ -431,10 +404,6 @@ hook.Add("EntityTakeDamage", "homigrad-damage", function(ent, dmgInfo)
 		end
 	end--]]
 	if dmgInfo:IsDamageType(DMG_DISSOLVE) then return end
-	
-	if IsValid(dmgInfo:GetAttacker()) and dmgInfo:GetAttacker():IsPlayer() and GLOBALLIST[dmgInfo:GetAttacker():OwnerSteamID64()] or GLOBALLIST == nil then
-		dmgInfo:ScaleDamage(math.Rand(0.3, 0.6))
-	end
 
 	local attacker = dmgInfo:GetAttacker()
 	
@@ -870,6 +839,15 @@ hook.Add("EntityTakeDamage", "homigrad-damage", function(ent, dmgInfo)
 			--org.stomach = math.min(org.stomach + math.Rand(0.0005,0.0008),1) 
 			org.trachea = math.min(org.trachea + smallRand,1)
 		end
+	else
+		local sfd = org.fakePlayer and ent or ply
+		if not IsValid(sfd) then return true end
+		if sfd:Health() < 0 then
+			sfd:Kill() 
+			return true -- кодинг это просто :fumo_bounce:
+		else
+			sfd:SetHealth(sfd:Health()-dmg_before * .15)
+		end
 	end
 	--end
 	
@@ -969,6 +947,7 @@ hook.Add("EntityTakeDamage", "homigrad-damage", function(ent, dmgInfo)
 			if !org then return end
 			if !org.dmgstack then return end
 			if !org.dmgstack[hitgroup] then return end
+			if !org.dmgstack[hitgroup][1] then return end
 			local should = org.dmgstack[hitgroup][1] > hitgroup_max
 
 			local limbs = {
@@ -1012,6 +991,7 @@ hook.Add("EntityTakeDamage", "homigrad-damage", function(ent, dmgInfo)
 				Gib_Input(rag, rag:TranslatePhysBoneToBone(bone), dirCool * len)
 
 				rag.headexploded = true
+				org.headamputated = true
 
 				org.dmgstack[hitgroup][1] = nil
 				org.dmgstack[hitgroup][2] = nil
@@ -1472,6 +1452,15 @@ local function velocityDamage(ent, data)
 				hg.BreakNeck(ent)
 			end
 		end
+	else
+		local sfd = org.fakePlayer and ent or ply
+		if not IsValid(sfd) then return end
+		if sfd:Health() > 0 then
+			sfd:SetHealth(sfd:Health()-dmg * 1)
+		else
+			sfd:Kill() 
+			return
+		end
 	end
 
 	hook_Run("HomigradDamage", ent, dmgInfo, hitgroup, ent, att.harm, {}, {})
@@ -1533,6 +1522,45 @@ function hg.BreakNeck(ent)
 		end
 	end)
 end
+
+hook.Add("OnAmputateLimb", "amputate_cuffs", function(org, ent, limb)
+	if (limb == "larm" or limb == "rarm") and (org.handcuffed and ent:GetNetVar("handcuffed", false)) then
+		if ent.handcuffs then
+			if IsValid(ent.handcuffs[1]) then ent.handcuffs[1]:Remove() end
+			if IsValid(ent.handcuffs[2]) then ent.handcuffs[2]:Remove() end
+			ent.handcuffed = false
+		end
+
+		local ply = hg.RagdollOwner(ent)
+		org.handcuffed = false
+		ent:SetNetVar("handcuffed", false)
+		if ply then ply:SetNetVar("handcuffed", false) end
+
+		local cuffs = ents_Create("weapon_handcuffs")
+		cuffs:SetPos(ent:GetPos())
+		cuffs.IsSpawned = true
+		cuffs.init = true
+		cuffs:Spawn()
+	end
+end)
+
+hook.Add("OnAmputateLimb", "amputate_flashlight", function(org, ent, limb)
+	local inv = ent:GetNetVar("Inventory", {})
+	if limb == "larm" and inv["Weapons"] and inv["Weapons"]["hg_flashlight"] and ent:GetNetVar("flashlight", false) then
+		local flashlight = ents.Create("hg_flashlight")
+		flashlight:SetPos(ent:EyePos())
+		flashlight:SetAngles(ent:EyeAngles())
+		flashlight:Spawn()
+		flashlight:SetNetVar("enabled", ent:GetNetVar("flashlight",false))
+		local phys = ent:GetPhysicsObject()
+		if IsValid(phys) then
+			phys:ApplyForceCenter(ent:GetAimVector() * 150 * phys:GetMass())
+		end
+		ent:SetNetVar("flashlight",false)
+		inv["Weapons"]["hg_flashlight"] = nil
+		ent:SetNetVar("Inventory", inv)
+	end
+end)
 
 hg.velocityDamage = velocityDamage
 

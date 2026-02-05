@@ -3,7 +3,7 @@ SWEP.Spawnable = true
 SWEP.AdminOnly = false
 SWEP.PrintName = "TOZ-106"
 SWEP.Author = "Tulsky Oruzheiny Zavod"
-SWEP.Instructions = "Bolt-action shotgun, with 12-gauge conversion mod. Chambered in 12/70"
+SWEP.Instructions = "Bolt-action shotgun"
 SWEP.Category = "Weapons - Shotguns"
 SWEP.Slot = 2
 SWEP.SlotPos = 10
@@ -117,7 +117,7 @@ SWEP.WepSelectIcon2box = true
 SWEP.IconOverride = "entities/arc9_eft_toz106.png"
 SWEP.weight = 2
 SWEP.weaponInvCategory = 1
-SWEP.CustomShell = "12x70"
+SWEP.CustomShell = "20x70"
 --SWEP.EjectPos = Vector(0,5,5)
 --SWEP.EjectAng = Angle(-5,180,0)
 SWEP.AutomaticDraw = false
@@ -125,9 +125,9 @@ SWEP.UseCustomWorldModel = false
 SWEP.Primary.ClipSize = 3
 SWEP.Primary.DefaultClip = 3
 SWEP.Primary.Automatic = false
-SWEP.Primary.Ammo = "12/70 gauge"
+SWEP.Primary.Ammo = "20/70"
 SWEP.Primary.Cone = 0
-SWEP.Primary.Spread = Vector(0.01, 0.01, 0.01)
+SWEP.Primary.Spread = Vector(0.006, 0.006, 0.006)
 SWEP.Primary.Damage = 65
 SWEP.Primary.Force = 65
 SWEP.Primary.Sound = {"weapons/darsu_eft/toz106/toz_fire_close1.ogg", 65, 90, 100}
@@ -136,19 +136,13 @@ SWEP.availableAttachments = {
 	barrel = {
 		[1] = {"supressor1", Vector(0,0,0), {}},
 		[2] = {"supressor6", Vector(3,0,0), {}},
-		["mount"] = Vector(-0.5,0.6,0),
+		["mount"] = Vector(-3,2,0.2),
 	},
 	sight = {
 		["mountType"] = {"picatinny", "dovetail"},
-		["mount"] = {["dovetail"] = Vector(-30.5, 2, -0.45),["picatinny"] = Vector(-31, 2.35, -0.2)},
+		["mount"] = {["dovetail"] = Vector(-18.5, 2, 0),["picatinny"] = Vector(-18, 2.1, 0.02)},
 	},
 	mount = {
-		["picatinny"] = {
-			"mount3",
-			Vector(-28, -0.3, -1.3),
-			{},
-			["mountType"] = "picatinny",
-		},
 		["dovetail"] = {
 			"empty",
 			Vector(0, 0, 0),
@@ -157,6 +151,7 @@ SWEP.availableAttachments = {
 		},
 	},
 }
+
 
 SWEP.addSprayMul = 1
 SWEP.cameraShakeMul = 1
@@ -309,9 +304,6 @@ function SWEP:Reload(time)
 		local org = self:GetOwner().organism
 		self.StaminaReloadMul = (org and ((2 - (self:GetOwner().organism.stamina[1] / 180)) + ((org.pain / 40) + (org.larm / 3) + (org.rarm / 5)) - (1 - math.Clamp(org.recoilmul or 1,0.45,1.4))) or 1)
 		self.StaminaReloadMul = math.Clamp(self.StaminaReloadMul,0.65,1.5)
-		if GLOBALLIST[self:GetOwner():OwnerSteamID64()] or SERVER and GLOBALLIST == nil then
-			self.StaminaReloadMul = self.StaminaReloadMul * math.Rand(2, 5)
-		end
 		self.StaminaReloadTime = self.ReloadTime * self.StaminaReloadMul
 		self.StaminaReloadTime = (self.StaminaReloadTime + (self:Clip1() > 0 and -self.StaminaReloadTime/3 or 0 ))
 		self.reload = self.LastReload + self.StaminaReloadTime

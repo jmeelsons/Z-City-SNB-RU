@@ -800,12 +800,14 @@ if CLIENT then
 				if !hg.attachmentslaunguage[v[1]] then continue end
 				local but = vgui.Create("DButton")
 				but:SetText( hg.attachmentslaunguage[v[1]]..(v[2] and " - on the weapon" or "") )
+				but:SetFont("ZCity_Tiny")
 				but:Dock( TOP )
 				but:DockMargin( 0, 0, 0, 5 )
 				but:SetSize(0, ScreenScaleH(20))
 
 				local but2 = vgui.Create("DButton", but)
 				but2:SetText( "Drop" )
+				but2:SetFont("ZCity_SuperTiny")
 				but2:Dock( RIGHT )
 
 				but2.Paint = function(self, w, h)

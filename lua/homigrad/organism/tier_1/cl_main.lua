@@ -851,7 +851,7 @@ function hg.applyFountain(pos, ang, mul, mul2, forward, ent)
 	end
 end
 
-local hg_new_blood = ConVarExists("hg_new_blood") and GetConVar("hg_new_blood") or CreateClientConVar("hg_new_blood", 0, true, false, "new decals, or old", 0, 1)
+local hg_old_blood = ConVarExists("hg_old_blood") and GetConVar("hg_old_blood") or CreateClientConVar("hg_old_blood", 0, true, false, "new decals, or old", 0, 1)
 local vecTorso = Vector(1, 1, 1)
 local checkpulsebones = {
 	["ValveBiped.Bip01_Head1"] = true,
@@ -884,6 +884,7 @@ hook.Add("Player-Ragdoll think", "organism-think-client-blood", function(ply, en
 		--local chest = ent:LookupBone("ValveBiped.Bip01_Spine1")
 		
 		if torso then
+			if ent:GetPos():Distance(lply:GetPos()) > 450 then return end
 			local sin = (math.sin(ent.pulsethink) + 1) * 0.5
 			local amt = 0.02 * sin * pulse / 70 * ((org.alive and !ent.headexploded) and 1 or 0)
 			
@@ -906,7 +907,6 @@ hook.Add("Player-Ragdoll think", "organism-think-client-blood", function(ply, en
 				if ent.armors then
 					muffed = ent.armors["face"] == "mask2" or ent.PlayerClassName == "Combine"
 				end
-				
 				ent:EmitSound("snds_jack_hmcd_breathing/" .. (ThatPlyIsFemale(ent) and "f" or "m") .. math.random(4) .. ".wav", min(heartbeat * 1.0 / ( muffed and 2.5 or 4), 45), math.random(95, 105) + (ply.PlayerClassName and ply.PlayerClassName == "furry" and 20 or 0), 0.5 * (((org.stamina and org.stamina[1] and org.stamina[1] < 160) or org.heartbeat > 140) and 1 or 0.05), CHAN_AUTO, 0, muffed and 16 or 0)
 			elseif org.breathed and sin >= 0.1 then
 				org.breathed = false
@@ -931,7 +931,7 @@ hook.Add("Player-Ragdoll think", "organism-think-client-blood", function(ply, en
 	local org = ent.organism or {}
 	local owner = ent
 	
-	local beatsPerSecond = math.max(min(30 / math.max(org.pulse or 70,2), 4), 0.1) * (hg_new_blood:GetBool() and 0.3 or 1)
+	local beatsPerSecond = math.max(min(30 / math.max(org.pulse or 70,2), 4), 0.1) * (!hg_old_blood:GetBool() and 0.3 or 1)
 		
 	if org.pulse and org.heartbeat > 30 and (org.lastpulse or 0) + (1 / math.Clamp(org.heartbeat, 1, 600)) * 60 < CurTime() then
 		org.lastpulse = CurTime()
@@ -1013,6 +1013,10 @@ hook.Add("Player-Ragdoll think", "organism-think-client-blood", function(ply, en
 				if wound[5] + beatsPerSecond < time then
 					if seen and ent:LookupBone(wound[4]) then
 						local bone = wound[4]
+						local should = !(hg.amputatedlimbs2[bone] and org[hg.amputatedlimbs2[bone].."amputated"])
+
+						if !should then continue end
+
 						local mat = ent:GetBoneMatrix(ent:LookupBone(bone))
 						if not mat then return end
 						local bonePos, boneAng = mat:GetTranslation(), mat:GetAngles()
@@ -1028,7 +1032,7 @@ hook.Add("Player-Ragdoll think", "organism-think-client-blood", function(ply, en
 							hg.addBloodPart(pos, VectorRand(-15, 15), nil, size, size, false, nil, ent)
 						end
 
-						wound[5] = time + (water and 2 or (math.Rand(0, 1) * (hg_new_blood:GetBool() and 0.5 or 1) / wound[1] * 15))
+						wound[5] = time + (water and 2 or (math.Rand(0, 1) * (!hg_old_blood:GetBool() and 0.5 or 1) / wound[1] * 15))
 					else
 						local pos = ent:GetPos()
 
@@ -1039,7 +1043,7 @@ hook.Add("Player-Ragdoll think", "organism-think-client-blood", function(ply, en
 							hg.addBloodPart(pos, VectorRand(-15, 15), nil, size, size, false, nil, ent)
 						end
 
-						wound[5] = time + (water and 2 or (math.Rand(0, 1) * (hg_new_blood:GetBool() and 0.5 or 1) / wound[1] * 15))
+						wound[5] = time + (water and 2 or (math.Rand(0, 1) * (!hg_old_blood:GetBool() and 0.5 or 1) / wound[1] * 15))
 					end
 				end
 			end
@@ -1053,8 +1057,13 @@ hook.Add("Player-Ragdoll think", "organism-think-client-blood", function(ply, en
 				local pos, ang = ent:GetBonePosition(ent:LookupBone(wound[4]))
 				if (owner:IsPlayer() and owner:Alive()) or not owner:IsPlayer() then
 					local size = math.random(1, 2) * math.max(math.min(wound[1], 1), 0.5)
-					if seen then
+					if seen and ent:LookupBone(wound[4]) then
 						local bone = wound[4]
+
+						local should = !(hg.amputatedlimbs2[bone] and org[hg.amputatedlimbs2[bone].."amputated"])
+
+						if !should then continue end
+						
 						local mat = ent:GetBoneMatrix(ent:LookupBone(bone))
 						if not mat then return end
 						local bonePos, boneAng = mat:GetTranslation(), mat:GetAngles()
@@ -1124,6 +1133,7 @@ local limbs = {
 	["rleg"] = "ValveBiped.Bip01_R_Calf",
 	["larm"] = "ValveBiped.Bip01_L_Forearm",
 	["rarm"] = "ValveBiped.Bip01_R_Forearm",
+	["head"] = "ValveBiped.Bip01_Head1"
 }
 
 function hg.amputatedbone(ent, bone)
@@ -1162,11 +1172,6 @@ function hg.GoreCalc(ent, ply)
 		local mat = ent:GetBoneMatrix(bon)
 		local mat2 = ent:GetBoneMatrix(bon - 1)
 		mat:SetScale(vecalmostzero)
-		
-		--for i, bona in pairs(hg.get_children(ent, bon)) do
-			--ent:ManipulateBoneScale(bona, vecalmostzero)
-		--end
-		--ent:ManipulateBoneScale(bon, vecalmostzero)
 		
 		hg.bone_apply_matrix(ent, bon, mat)
 		

@@ -1,15 +1,14 @@
 if SERVER then AddCSLuaFile() end
 SWEP.Base = "weapon_bandage_sh"
 SWEP.PrintName = "Fury-13"
-SWEP.Instructions = "Fury-13 (Not to be confused with \"Furry-13\", an unrelated pathowogen virus strain) is an incredibly potent stimulator drug. Instead of \"modifying\" how your organism works, this drug aims to provide additional resources instead, making you stronger than ever before. Side effects may include permanent brain damage."
+SWEP.Instructions = "Fury-13 (Not to be confused with \"Furry-13\", an unrelated pathowogen virus strain) is an incredibly potent stimulator drug. Instead of \"modifying\" how your organism works, this drug aims to provide additional resources instead, making you stronger than ever before. Side effects may include permanent brain damage. Do not use on infected person."
 SWEP.Category = "ZCity Other"
 SWEP.Spawnable = true
 SWEP.Primary.Wait = 1
 SWEP.Primary.Next = 0
 SWEP.HoldType = "normal"
 SWEP.ViewModel = ""
-SWEP.WorldModel = "models/weapons/tfa_ins2/upgrades/phy_optic_eotech.mdl"
-SWEP.Model = "models/weapons/w_models/w_jyringe_jroj.mdl"
+SWEP.WorldModel = "models/bloocobalt/l4d/items/w_eq_adrenaline.mdl"
 if CLIENT then
 	SWEP.WepSelectIcon = Material("entities/zcity/fury13.png")
 	SWEP.IconOverride = "entities/zcity/fury13.png"
@@ -21,8 +20,10 @@ SWEP.AutoSwitchFrom = false
 SWEP.Slot = 5
 SWEP.SlotPos = 1
 SWEP.WorkWithFake = true
-SWEP.offsetVec = Vector(5, -1.5, -2.5)
-SWEP.offsetAng = Angle(90, 00, -90)
+SWEP.offsetVec = Vector(3, -2.5, -1)
+SWEP.offsetAng = Angle(-30, 20, -90)
+SWEP.ModelScale = 0.6
+SWEP.Color = Color(255, 170, 80)
 SWEP.modeNames = {
 	[1] = "fury-13"
 }
@@ -59,7 +60,11 @@ if SERVER then
 		entOwner:EmitSound("snd_jack_hmcd_needleprick.wav", 60, math.random(95, 105))
 		if ent.PlayerClassName != "furry" then
 			org.berserk = org.berserk + 2
+		else
+			org.poison4 = CurTime()
+			org.internalBleed = org.internalBleed + 10
 		end
+
 		self.modeValues[1] = 0
 
 		if self.poisoned2 then

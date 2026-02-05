@@ -15,9 +15,10 @@ function MODE.GuiltCheck(Attacker, Victim, add, harm, amt)
 end
 
 function MODE:CanLaunch()
-	local points = zb.GetMapPoints( "HMCD_TDM_T" )
+	return true
+	--[[local points = zb.GetMapPoints( "HMCD_TDM_T" )
 	local points2 = zb.GetMapPoints( "HMCD_TDM_CT" )
-    return (#points > 0) and (#points2 > 0)
+    return (#points > 0) and (#points2 > 0)]] -- can work without them
 end
 
 MODE.ForBigMaps = true
@@ -26,7 +27,7 @@ util.AddNetworkString("tdm_start")
 function MODE:Intermission()
 	game.CleanUpMap()
 
-	for i, ply in ipairs(player.GetAll()) do
+	for i, ply in player.Iterator() do
 		ply:SetupTeam(ply:Team())
 		
 		ply:SetNWInt( "TDM_Money", self.StartMoney )
@@ -87,7 +88,7 @@ function MODE:GiveEquipment()
 	timer.Simple(0.1,function()
 		local mrand = math.random(#tblweps[0])
 
-		for _, ply in ipairs(player.GetAll()) do
+		for _, ply in player.Iterator() do
 			if not ply:Alive() then continue end
 			
 			local inv = ply:GetNetVar("Inventory")
@@ -187,8 +188,13 @@ net.Receive("tdm_buyitem",function(len,ply)
 	if !CurrentRound().buymenu then return end
 	if ((zb.ROUND_START or 0) + 40 < CurTime()) then ply:ChatPrint("Time's up!") return end
 	local tItem = net.ReadTable()
-	
-	local item = CurrentRound().BuyItems[tItem[1]][tItem[2]]
+	if not istable(tItem) then return end
+	local category = tItem[1]
+	local index = tItem[2]
+	if not category or not index then return end
+	local buyItems = CurrentRound().BuyItems
+	if not buyItems or not buyItems[category] or not buyItems[category][index] then return end
+	local item = buyItems[category][index]
 
 	if not item then return end
 

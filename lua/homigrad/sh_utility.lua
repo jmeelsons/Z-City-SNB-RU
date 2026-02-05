@@ -245,7 +245,7 @@ hg.ConVars = hg.ConVars or {}
 			return player.GetAll()
 		end
 
-		for i, ply in pairs(player.GetAll()) do
+		for i, ply in player.Iterator() do
 			if string.find(string.lower(ply:Name()), string.lower(name)) then list[#list + 1] = ply end
 		end
 		return list
@@ -289,6 +289,7 @@ hg.ConVars = hg.ConVars or {}
 	local HullDuckMins = -Vector(hull, hull, 0)
 	local ViewOffset = Vector(0, 0, 64)
 	local ViewOffsetDucked = Vector(0, 0, 38)
+	local Pos32 = Vector(0, 0, 32)
 
 	local gridsize = 24
 	local tpGrid = hg.spiralGrid(gridsize)
@@ -307,7 +308,7 @@ hg.ConVars = hg.ConVars or {}
 		offset:Rotate( Angle( 0, yawForward, 0 ) )
 
 		local t = {}
-		t.start = pos + Vector( 0, 0, 32 )
+		t.start = pos + Pos32
 		t.collisiongroup = COLLISION_GROUP_WEAPON
 		t.filter = player.GetAll()
 		t.endpos = t.start + offset
@@ -572,6 +573,7 @@ hg.ConVars = hg.ConVars or {}
 		local prev_on_ground,current_on_ground,speedPrevious,speed = false,false,0,0
 		local angle_hitground = Angle(0,0,0)
 		hook.Add("Think", "CP_detectland", function()
+			if IsValid(lply.FakeRagdoll) then return end
 			prev_on_ground = current_on_ground
 			current_on_ground = LocalPlayer():OnGround()
 
@@ -699,7 +701,7 @@ hg.ConVars = hg.ConVars or {}
 
 		ply:SetNWEntity("spect", NULL)
 
-		if CLIENT and ply:Alive() then ply:BoneScaleChange() end
+		-- if CLIENT and ply:Alive() then ply:BoneScaleChange() end
 
 		ply:SetHull(HullMins, HullMaxs)
 		ply:SetHullDuck(HullDuckMins, HullDuckMaxs)
@@ -876,6 +878,13 @@ local IsValid = IsValid
 	end
 --//
 --\\ DrawPlayerRagdoll
+	local hg_ragdollcombat = ConVarExists("hg_ragdollcombat") and GetConVar("hg_ragdollcombat") or CreateConVar("hg_ragdollcombat", 0, FCVAR_REPLICATED, "ragdoll combat", 0, 1)
+	
+	function hg.RagdollCombatInUse(ply)
+		return hg_ragdollcombat:GetBool() and IsValid(ply.FakeRagdoll)
+	end
+	
+	local hg_firstperson_ragdoll = ConVarExists("hg_firstperson_ragdoll") and GetConVar("hg_firstperson_ragdoll") or CreateConVar("hg_firstperson_ragdoll", 0, FCVAR_ARCHIVE, "first person ragdoll", 0, 1)
 	local hg_gopro = ConVarExists("hg_gopro") and GetConVar("hg_gopro") or CreateClientConVar("hg_gopro", "0", true, false, "gopro camera", 0, 1)
 
 	local vector_full = Vector(1, 1, 1)
@@ -937,7 +946,7 @@ local IsValid = IsValid
 		--if !current:IsEqualTol(wawanted, 0.01) then
 			--ent:ManipulateBoneScale(lkp, wawanted)
 			local mat = ent:GetBoneMatrix(lkp)
-			if not hg_gopro:GetBool() then
+			if !hg_gopro:GetBool() and (ent == ply or (!hg_ragdollcombat:GetBool() or hg_firstperson_ragdoll:GetBool())) then
 				mat:SetScale(wawanted)
 			end
 			--angfuck[3] = -GetViewPunchAngles2()[2] - GetViewPunchAngles3()[2]
@@ -1518,7 +1527,7 @@ local IsValid = IsValid
 			return
 		end
 
-		if IsValid(ply.FakeRagdoll) or IsValid(ply:GetNWEntity("FakeRagdollOld")) then
+		if !hg.RagdollCombatInUse(ply) and (IsValid(ply.FakeRagdoll) or IsValid(ply:GetNWEntity("FakeRagdollOld"))) then
 			if IsValid(ply.FakeRagdoll) then
 				cmd:SetForwardMove(0)
 				cmd:SetSideMove(0)
@@ -1974,6 +1983,8 @@ local IsValid = IsValid
 			end
 		end
 
+		hook_Run("HG_PlayerFootstep_Notify", ply, pos, foot, sound, volume, rf)	--; Do not return anything from this _Notify hook
+		
 		local Hook = hook_Run("HG_PlayerFootstep", ply, pos, foot, sound, volume, rf)
 
 		if Hook then return Hook end
@@ -2105,7 +2116,7 @@ local IsValid = IsValid
 
 		if not flashlightwep then --custom flashlight
 			local inv = ply:GetNetVar("Inventory",{})
-			if inv and inv["Weapons"] and inv["Weapons"]["hg_flashlight"] and enabled then
+			if inv and inv["Weapons"] and inv["Weapons"]["hg_flashlight"] and enabled and hg.CanUseLeftHand(ply) then
 				hg.GetCurrentCharacter(ply):EmitSound("items/flashlight1.wav",65)
 				ply:SetNetVar("flashlight",not ply:GetNetVar("flashlight"))
 				--return true
@@ -2242,6 +2253,11 @@ local IsValid = IsValid
 --\\ Can use hands
 	function hg.CanUseLeftHand(ply)
 		local ent = IsValid(ply.FakeRagdoll) and ply.FakeRagdoll or ply
+
+		if ent.organism and ent.organism.larmamputated then
+			return false
+		end
+
 		local wep = IsValid(ply:GetActiveWeapon()) and ply:GetActiveWeapon()
 		local Car = (ply.GetSimfphys and IsValid(ply:GetSimfphys()) and ply:GetSimfphys()) or ( ply.GlideGetVehicle and IsValid(ply:GlideGetVehicle()) and ply:GlideGetVehicle()) or ply:GetVehicle()
 
@@ -2260,6 +2276,12 @@ local IsValid = IsValid
 	end
 
 	function hg.CanUseRightHand(ply)
+		local ent = IsValid(ply.FakeRagdoll) and ply.FakeRagdoll or ply
+
+		if ent.organism and ent.organism.rarmamputated then
+			return false
+		end
+
 		return true
 	end
 --//
@@ -2465,7 +2487,7 @@ duplicator.Allow( "homigrad_base" )
 			if Player:IsOnFire() then
 				anim = ACT_HL2MP_RUN_PANICKED
 			elseif isFurry then
-				if hg.KeyDown(Player, IN_WALK) then
+				if hg.KeyDown(Player, IN_WALK) and not hg.KeyDown(Player, IN_BACK) then
 					anim = ACT_HL2MP_RUN_ZOMBIE_FAST
 				else
 					anim = ACT_HL2MP_RUN_FAST
@@ -2691,7 +2713,6 @@ hg.ColdMaps = {
     game.AddParticles( "particles/gf2_firework_small_01.pcf" )
 --//
 --\\ Fun commands
-	local hg_ragdollcombat = ConVarExists("hg_ragdollcombat") and GetConVar("hg_ragdollcombat") or CreateConVar("hg_ragdollcombat", 0, FCVAR_REPLICATED, "ragdoll combat", 0, 1)
 	local hg_thirdperson = ConVarExists("hg_thirdperson") and GetConVar("hg_thirdperson") or CreateConVar("hg_thirdperson", 0, FCVAR_REPLICATED, "thirdperson combat", 0, 1)
 --//
 --\\ Explosion Trace
