@@ -142,6 +142,9 @@ hg.ConVars = hg.ConVars or {}
 	end
 
 	hook.Add("PostCleanupMap","fuckclientsidemodels",hg.ClearClientsideModels)
+	hook.Add("PostCleanupMap","remove_this_stupid_clside_ragdolls",function()
+		for k,v in ipairs(ents.FindByClass('class C_ClientRagdoll')) do v:Remove() end
+	end)
 --//
 
 --\\ Fake status info for scare mode
@@ -259,10 +262,16 @@ players : 1 humans, 0 bots (20 max)
 			if not lply:Alive() then return end
 			if not IsValid(lply) or not lply:IsPlayer() then return end
 			if !lply:Alive() or !lply.organism or lply.organism.otrub then return end
+			local CustomAmmoType = false
+			if hg.ammotypeshuy[bullet.AmmoType] then
+				CustomAmmoType = hg.ammotypeshuy[bullet.AmmoType]
+			end
+			local subsonic = !(CustomAmmoType and CustomAmmoType.BulletSettings and CustomAmmoType.BulletSettings.Speed and CustomAmmoType.BulletSettings.Speed > 340)
+			
 			local tr = bullet.Trace
 			local mr = math.random(17)
 			local view = render.GetViewSetup(true)
-			if tr.StartPos:Distance( tr.HitPos ) > 5000 then
+			if tr.StartPos:Distance( tr.HitPos ) > 5000 and !subsonic then
 				local time = view.origin:Distance(tr.StartPos+tr.HitPos/2) / 17836
 				timer.Simple(time,function()
 					EmitSound("cracks/distant/dist_crack_" .. ( mr < 9 and "0" or "") .. mr .. ".ogg", tr.StartPos+tr.HitPos*0.35, 0, CHAN_AUTO, 1,SNDLVL_140dB)
@@ -272,12 +281,11 @@ players : 1 humans, 0 bots (20 max)
 			local self = ent
 			if tr.Entity == hg.GetCurrentCharacter(lply) then
 
-				Suppress((10))
+				Suppress( 10 )
 				return
 			end
 
 			if not IsValid(self) or self:GetOwner() == lply:GetViewEntity() then return end
-
 			local eyePos = view.origin
 			local dis, pos = util.DistanceToLine(tr.StartPos, tr.HitPos, eyePos)
 			local isVisible = not util.TraceLine({
@@ -294,10 +302,21 @@ players : 1 humans, 0 bots (20 max)
 			local mr = math.random(9)
 
 			if shooterdist < 200 and not IsLookingAt(self:GetOwner(),eyePos) then return end
-			if dist < 180 then EmitSound("cracks/heavy/heav_crack_0" .. mr .. ".ogg", pos, 0, CHAN_AUTO, 1,65) end
-			if dist > 120 then return end
+			local SND = subsonic and "weapons/bullets/fx/subsonic_0" .. mr .. ".wav"
+				or bullet.Damage >= 50 and "cracks/" .. "heavy/heav" .. "_crack_0" .. mr .. ".ogg"
+				or bullet.Damage >= 30 and "cracks/" .. "medium/med" .. "_crack_0" .. mr .. ".ogg"
+				or "cracks/" .. "light/light" .. "_crack_0" .. mr .. ".ogg"
 
-			EmitSound("cracks/heavy/heav_crack_0" .. mr .. ".ogg", pos, 0, CHAN_AUTO, 1,85)
+			if dist < 180 then
+				timer.Simple(0.01,function()
+					EmitSound("weapons/bullets/fx/subsonic_0" .. mr .. ".wav", pos - tr.Normal * 25, 0, CHAN_AUTO, 1, 55)
+				end)
+				-- EmitSound(SND, pos - tr.Normal * 25, 0, CHAN_AUTO, 1, 65) 
+			end
+			if dist > 120 then return end
+			if !subsonic then
+				EmitSound(SND, pos - tr.Normal * 25, 0, CHAN_AUTO, 1, 75)
+			end
 
 			dist = dist / math.abs((tr.HitPos - tr.StartPos):GetNormalized():Dot((tr.StartPos - eyePos):GetNormalized()))
 			dist = math.Clamp(1 / dist, 0.05,0.25)
@@ -337,7 +356,7 @@ players : 1 humans, 0 bots (20 max)
 			[ "$pp_colour_mulb" ] = 0
 		}
 
-		local hg_potatopc = GetConVar("hg_potatopc") or CreateClientConVar("hg_potatopc", "0", true, false, "enable this if you are noob", 0, 1)
+		local hg_potatopc = GetConVar("hg_potatopc") or CreateClientConVar("hg_potatopc", "0", true, false, "Toggle potato (low-end pc) mode", 0, 1)
 
 		hg.ConVars.potatopc = hg_potatopc
 
@@ -471,7 +490,7 @@ players : 1 humans, 0 bots (20 max)
 --//
 
 --\\ custom sens
-	local hg_zoomsensitivity = ConVarExists("hg_zoomsensitivity") and GetConVar("hg_zoomsensitivity") or CreateConVar("hg_zoomsensitivity", 1, FCVAR_ARCHIVE, "aiming zoom sensitifity multiplier", 0, 3)
+	local hg_zoomsensitivity = ConVarExists("hg_zoomsensitivity") and GetConVar("hg_zoomsensitivity") or CreateConVar("hg_zoomsensitivity", 1, FCVAR_ARCHIVE, "Multiply aiming zoom sensivity", 0, 3)
 
 	hook.Add("AdjustMouseSensitivity", "AdjustRunSensivityHUY", function(defaultSensitivity)
 		if not lply:Alive() then return end--kakoy sencivity NOOB
@@ -555,6 +574,13 @@ players : 1 humans, 0 bots (20 max)
 		--checkcd = CurTime() + 1
 		local entities = ents_FindByClass("prop_ragdoll")
 		table_Add(entities, player_GetAll())
+
+		local orgents = {}
+		for ent in pairs(hg.organism_ents) do
+			if !IsValid(ent) then hg.organism_ents[ent] = nil continue end
+
+			table.insert(entities, ent)
+		end
 
 		hg.seenents = {}
 		hg.seenents2 = {}
@@ -712,14 +738,20 @@ players : 1 humans, 0 bots (20 max)
 				ent.Blinking = cachedLerp(FrameTime() * 5,ent.Blinking or 0,1)
 			end
 
-			if ent:IsRagdoll() and ent:GetFlexIDByName("blink") then
+			if ply.suiciding then
+				ent.Blinking = 1
+			end
+			
+			if ent:GetFlexIDByName("blink") then
 				ent:SetFlexWeight(ent:GetFlexIDByName("blink"), ent.Blinking or 0)
-				if ent:GetFlexIDByName("wrinkler") then
-					ent:SetFlexWeight(ent:GetFlexIDByName("wrinkler"), ent.Blinking or 0)
-				end
-				if ent:GetFlexIDByName("half_closed") then
-					ent:SetFlexWeight(ent:GetFlexIDByName("half_closed"), ent.Blinking or 0)
-				end
+			end
+
+			if ent:GetFlexIDByName("wrinkler") then
+				ent:SetFlexWeight(ent:GetFlexIDByName("wrinkler"), ent.Blinking or 0)
+			end
+
+			if ent:GetFlexIDByName("half_closed") then
+				ent:SetFlexWeight(ent:GetFlexIDByName("half_closed"), ent.Blinking or 0)
 			end
 		end
 
@@ -872,11 +904,7 @@ players : 1 humans, 0 bots (20 max)
 		local function AddTinnitus(time, needSound)
 			lply = LocalPlayer()
 			lply.tinnitus = CurTime() + time * 4
-			lply:SetDSP(32) -- 36
-			if needSound then -- not used anyway :3
-				//lply:EmitSound("earringing_end.wav")
-				//zcitysnd/real_sonar/tinnitus1.mp3
-			end
+			lply:SetDSP(32)
 		end
 
 		local plymeta = FindMetaTable("Player")
@@ -891,4 +919,19 @@ players : 1 humans, 0 bots (20 max)
 			AddTinnitus(time,bool)
 		end)
 	end
+--//
+
+--\\ Remove CLIENT side hit particles
+	hook.Add("ScalePlayerDamage","remove_cl_hit_particles",function()
+		return !game.SinglePlayer() -- i hate singleplayer in gmod. WHY I SHOULD DO THIS STUPID IDIOTIC SHIT, i hate it.
+	end)
+--//
+
+--\\ Remove sfbreath effect
+	hook.Add("Think","RemoveSF2_breath",function()
+		hook.Remove("PostPlayerDraw", "StormFox2.Effect.Breath")
+		timer.Remove("StormFox2.Effect.BreathT")
+
+		hook.Remove("Think","RemoveSF2_breath")
+	end)
 --//

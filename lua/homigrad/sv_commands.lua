@@ -114,17 +114,24 @@ if SERVER then
     util.AddNetworkString("AnotherLightningEffect")
     util.AddNetworkString("PluvCommand")
 
-    COMMANDS.god = {function(ply)
+    COMMANDS.zc_god = {function(ply)
         if not ply.organism then return end
         
-        ply.organism.godmode = true
-    end,2}
+        ply.organism.godmode = !ply.organism.godmode
+		ply:Notify(ply.organism.godmode and "now i'm immortal..." or "now i'm mortal")
+		return
+    end,1}
 
-    COMMANDS.ungod = {function(ply)
+	COMMANDS.zc_cloak = {function(ply)
         if not ply.organism then return end
-        
-        ply.organism.godmode = nil
-    end,2}
+		ply.cloak = !ply.cloak
+        ply:SetMaterial(ply.cloak and "NULL" or nil)
+		ply:DrawShadow(!ply.cloak)
+		ply:SetCollisionGroup(ply.cloak and COLLISION_GROUP_DEBRIS or COLLISION_GROUP_PLAYER)
+		ply:RemoveAllDecals()
+		ply:Notify(ply.cloak and "now i'm invisible..." or "now i'm visible")
+		return
+    end,1}
 
     COMMANDS.punish = {function(ply, args)
         if #args < 1 then
@@ -205,4 +212,22 @@ if SERVER then
         ply:ChatPrint("Sent notification to " .. target:GetName() .. ": " .. message)
 
     end, 2, "ник игрока сообщение"}
+
+	COMMANDS.setmodel = {function(ply, args)
+		if not ply:IsAdmin() then return end
+		local plya = #args > 1 and args[1] or ply:Name()
+		local mdl = #args > 1 and args[2] or args[1]
+		for i, ply2 in pairs(player.GetListByName(plya)) do
+			if ply2:Alive() then
+				local Appearance = ply2.CurAppearance or hg.Appearance.GetRandomAppearance()
+				Appearance.AColthes = ""
+				ply2:SetNetVar("Accessories", "")
+				ply2:SetModel(mdl)
+				ply2:SetSubMaterial()
+				ply2:SetPlayerColor(ply2:GetNWVector("PlayerColor", vector_origin))
+
+				ply:ChatPrint(ply2:Name().. "'s model set to " .. tostring(mdl))
+			end
+		end
+	end, 0}
 end

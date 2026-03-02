@@ -11,11 +11,11 @@ if engine.ActiveGamemode() == "sandbox" then
                 return msg .. " - " .. ply:GetPlayerName(), Color(140, 140, 200) 
             end,
             ["/try"] = function(msg, ply)
-                return ply:GetPlayerName().. " Пытается " .. msg, Color(120, 200, 255) 
+                return ply:GetPlayerName().. " Trying " .. msg, Color(120, 200, 255) 
             end
         }
 
-        hook.Add("HG_OnPlayerCommand", "RPChatcmd", function(ply, texta)
+        hook.Add("HG_OnPlayerCommand", "zc_RPChatCommands", function(ply, texta)
             local text = texta[1]
             local cmd = string.lower(string.Explode(" ", text)[1])
             local txt = string.Explode(" ", text)
@@ -23,7 +23,7 @@ if engine.ActiveGamemode() == "sandbox" then
             --print(cmd)
             if commands[cmd] then
                 local message, color = commands[cmd](table.concat( txt, " " ), ply)
-                chat.AddText( color, " "..message )
+                chat.AddText( color, message )
                 return true
             end
         end)

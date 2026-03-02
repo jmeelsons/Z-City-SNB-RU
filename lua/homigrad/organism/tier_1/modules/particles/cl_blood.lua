@@ -234,6 +234,12 @@ bloodparticles_hook[2] = function(mul)
 
 				local insolid = result.StartSolid and IsValid(result.Entity)
 				if insolid then
+					if result.Entity:IsVehicle() then
+						table_remove(hg.bloodparticles1, i)
+					
+						continue
+					end
+
 					local center = result.Entity:GetBoneMatrix(ph)
 					local len = result.Entity:BoneLength(ph + 1)
 
@@ -245,12 +251,14 @@ bloodparticles_hook[2] = function(mul)
 
 				local pulldown = (-vector_up * (grav / 600)):Cross(-result.HitNormal:Angle():Right())
 				nextpos:Add(pulldown)
-				part.lerpedmove = LerpVector(1, part.lerpedmove or part[3] * mul, nextpos * mul * 1)
+				part.lerpedmove = LerpVector(1, part.lerpedmove or part[3] * mul, nextpos * mul * 2)
 				
 				if part.lerpedmove:LengthSqr() < 0.1 * mul then
 					decalBlood(result.HitPos, result.HitNormal, result, part.artery, part.owner)
 					
 					table_remove(hg.bloodparticles1, i)
+					
+					continue
 				end
 
 				pos:Set(posSet + part.start_velocity * mul)
