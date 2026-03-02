@@ -2,10 +2,20 @@ local PANEL = {}
 local curent_panel 
 local red_select = Color(192,0,0)
 
+local sound_hover = Sound("snb_ui/hover.wav")
+local sound_click = Sound("snb_ui/click.wav")
+
+local xbars = 17
+local ybars = 30
+local gradient_d = Material("vgui/gradient-d")
+local gradient_u = Material("vgui/gradient-u")
+local gradient_l = Material("vgui/gradient-l")
+local gradient_r = Material("vgui/gradient-r")
+
 local Selects = {
     {Title = "Disconnect", Func = function(luaMenu) RunConsoleCommand("disconnect") end},
     {Title = "Main Menu", Func = function(luaMenu) gui.ActivateGameUI() luaMenu:Close() end},
-    {Title = "Discord", Func = function(luaMenu) luaMenu:Close() gui.OpenURL("https://discord.gg/475EmEdTgH")  end},
+    {Title = "Discord", Func = function(luaMenu) luaMenu:Close() gui.OpenURL("https://discord.gg/Why Not?")  end},
     {Title = "Traitor Role",
     GamemodeOnly = true,
     CreatedFunc = function(self, parent, luaMenu)
@@ -22,8 +32,10 @@ local Selects = {
         btn.RColor = Color(225, 225, 225, 0)
         btn.WColor = Color(225, 225, 225, 255)
         btn.x = btn:GetX()
-
+        
+        local lastHovered = false
         function btn:DoClick()
+            surface.PlaySound(sound_click)
             luaMenu:Close()
             hg.SelectPlayerRole(nil, "soe")
         end
@@ -32,6 +44,11 @@ local Selects = {
         function btn:Think()
             self.HoverLerp = selfa.HoverLerp
             self.HoverLerp2 = LerpFT(0.2, self.HoverLerp2 or 0, self:IsHovered() and 1 or 0)
+            
+            if self:IsHovered() and not lastHovered then
+                surface.PlaySound(sound_hover)
+            end
+            lastHovered = self:IsHovered()
                 
             self:SetTextColor(self.RColor:Lerp(self.WColor:Lerp(red_select, self.HoverLerp2), self.HoverLerp))
             self:SetX(self.x + ScreenScaleH(40) + self.HoverLerp * ScreenScaleH(50))
@@ -50,8 +67,10 @@ local Selects = {
         btn.RColor = Color(225, 225, 225, 0)
         btn.WColor = Color(225, 225, 225, 255)
         btn.x = btn:GetX()
-
+        
+        local lastHovered2 = false
         function btn:DoClick()
+            surface.PlaySound(sound_click)
             luaMenu:Close()
             hg.SelectPlayerRole(nil, "standard")
         end
@@ -59,6 +78,11 @@ local Selects = {
         function btn:Think()
             self.HoverLerp = selfa.HoverLerp
             self.HoverLerp2 = LerpFT(0.2, self.HoverLerp2 or 0, self:IsHovered() and 1 or 0)
+            
+            if self:IsHovered() and not lastHovered2 then
+                surface.PlaySound(sound_hover)
+            end
+            lastHovered2 = self:IsHovered()
     
             self:SetTextColor(self.RColor:Lerp(self.WColor:Lerp(red_select, self.HoverLerp2), self.HoverLerp))
             self:SetX(self.x + ScreenScaleH(35))
@@ -79,31 +103,15 @@ local Selects = {
 }
 
 local splasheh = {
-    'LIKE HOMICIDED',
-    'PLUV PLUV PLUVISKI',
-    'LULU IS NOT DEAD | !PLUV',
-    'THE TRAITOR WAS KILLED',
-    'NAB HOMICIDE SERVER',
-    'ALSO TRY MODDED HOMICIDE 2',
-    'HOP ON Z-CITY',
-    'JOHN Z-CITY',
-    ':pluvrare:',
-    'SAW51 IS REAL',
-    'MORE SMALLTOWN',
-    'MORE CLUE2022',
-    'BACKROOMS == CLUE',
-    'HELL IS NEAR',
-    'I WISH YOU GOOD HEALTH, JASON STATHAM'
+    'что?', -- тут были плохие слова... ZZZ... 
 }
 
---print(string.upper('I wish you good health, Jason Statham'))
 surface.CreateFont("ZC_MM_Title", {
     font = "Bahnschrift",
     size = ScreenScale(40),
     weight = 800,
     antialias = true
 })
--- local Title = markup.Parse("error")
 
 local Pluv = Material("pluv/pluvkid.jpg")
 
@@ -131,8 +139,12 @@ local color_red = Color(255,25,25,45)
 local clr_gray = Color(255,255,255,25)
 local clr_verygray = Color(10,10,19,235)
 
+local animStartTime = 0
+local animDuration = 0.5
+local animActive = false
+
 function PANEL:Init()
-    self:SetAlpha(0)
+    self:SetAlpha(255)
     self:SetSize(ScrW(), ScrH())
     self:Center()
     self:SetTitle("")
@@ -143,6 +155,11 @@ function PANEL:Init()
     self:ShowCloseButton(false)
     curent_panel = nil
     self.Title, self.TitleShadow = self:InitializeMarkup()
+    
+    animStartTime = CurTime()
+    animActive = true
+    self.animProgress = 0
+    self.animOffset = ScrH()
 
     timer.Simple(0, function()
         if self.First then
@@ -167,7 +184,7 @@ function PANEL:Init()
 
     self.Buttons = {}
     for k, v in ipairs(Selects) do
-        if v.GamemodeOnly and engine.ActiveGamemode() != "zcity" then continue end
+        if v.GamemodeOnly and engine.ActiveGamemode() != "zbattle" then continue end
         self:AddSelect(lDock, v.Title, v)
     end
 
@@ -215,23 +232,66 @@ function PANEL:Init()
 end
 
 function PANEL:First( ply )
-    self:AlphaTo( 255, 0.1, 0, nil )
 end
 
-local gradient_d = surface.GetTextureID("vgui/gradient-d")
-local gradient_r = surface.GetTextureID("vgui/gradient-u")
-local gradient_l = surface.GetTextureID("vgui/gradient-l")
-
-local clr_1 = Color(102,0,0,35)
 function PANEL:Paint(w,h)
-    draw.RoundedBox( 0, 0, 0, w, h, self.ColorBG )
-    hg.DrawBlur(self, 5)
-    surface.SetDrawColor( self.ColorBG )
-    surface.SetTexture( gradient_l )
-    surface.DrawTexturedRect(0,0,w,h)
-    surface.SetDrawColor( clr_1 )
-    surface.SetTexture( gradient_d )
-    surface.DrawTexturedRect(0,0,w,h)
+    if animActive then
+        local elapsed = CurTime() - animStartTime
+        self.animProgress = math.min(elapsed / animDuration, 1)
+        
+        self.animProgress = 1 - math.pow(1 - self.animProgress, 3)
+        
+        self.animOffset = ScrH() * (1 - self.animProgress)
+        
+        if self.animProgress >= 1 then
+            animActive = false
+            self.animOffset = 0
+        end
+    end
+    
+    local yOffset = self.animOffset or 0
+    
+    draw.RoundedBox(0, 0, yOffset, w, h, Color(28,28,28,225))
+    
+    local sw, sh = ScrW(), ScrH()
+    
+    surface.SetDrawColor(128, 128, 128, 30)
+    
+    for i = 1, (ybars + 1) do
+        surface.DrawRect((sw / ybars) * i - (CurTime() * 30 % (sw / ybars)), yOffset, ScreenScale(1), sh)
+    end
+    
+    for i = 1, (xbars + 1) do
+        surface.DrawRect(0, (sh / xbars) * (i - 1) + (CurTime() * 30 % (sh / xbars)) + yOffset, sw, ScreenScale(1))
+    end
+    
+    local border_size = 5
+    surface.SetDrawColor(0, 0, 0)
+    surface.SetMaterial(gradient_l)
+    surface.DrawTexturedRect(0, yOffset, border_size, sh)
+    
+    if IsValid(self.lDock) then
+        local x, y = self.lDock:GetPos()
+        self.lDock:SetPos(x, y + yOffset)
+        self.lDock:PaintManual()
+        self.lDock:SetPos(x, y)
+    end
+    
+    if IsValid(self.panelparrent) then
+        local x, y = self.panelparrent:GetPos()
+        self.panelparrent:SetPos(x, y + yOffset)
+        self.panelparrent:PaintManual()
+        self.panelparrent:SetPos(x, y)
+    end
+    
+    for _, child in ipairs(self:GetChildren()) do
+        if child ~= self.lDock and child ~= self.panelparrent and IsValid(child) then
+            local x, y = child:GetPos()
+            child:SetPos(x, y + yOffset)
+            child:PaintManual()
+            child:SetPos(x, y)
+        end
+    end
 end
 
 function PANEL:AddSelect( pParent, strTitle, tbl )
@@ -250,12 +310,12 @@ function PANEL:AddSelect( pParent, strTitle, tbl )
     local luaMenu = self 
     if tbl.CreatedFunc then tbl.CreatedFunc(btn, self, luaMenu) end
     btn.RColor = Color(225,225,225)
+    
+    local lastHovered = false
+    
     function btn:DoClick()
-        -- ,kz оптимизировать надо, но идёт ошибка(кэшировать бы luaMenu.panelparrent вместо вызова его каждый раз)
-        if curent_panel == string.lower(strTitle) then
-			for i = 1, 3 do
-				surface.PlaySound("shitty/tap_release.wav")
-			end
+        surface.PlaySound(sound_click)
+        if curent_panel == string.lower(strTitle) then 
             luaMenu.panelparrent:AlphaTo(0,0.2,0,function()
                 luaMenu.panelparrent:Remove()
                 luaMenu.panelparrent = nil
@@ -264,7 +324,6 @@ function PANEL:AddSelect( pParent, strTitle, tbl )
                 luaMenu.panelparrent:SetPos(some_coordinates_x, 0)
                 luaMenu.panelparrent:SetSize(some_size_x, some_size_y)
                 luaMenu.panelparrent.Paint = function(this, w, h) end
-                --btn.Func(luaMenu,luaMenu.panelparrent)
                 curent_panel = nil
             end)
             return 
@@ -283,20 +342,22 @@ function PANEL:AddSelect( pParent, strTitle, tbl )
             btn.Func(luaMenu,luaMenu.panelparrent)
             curent_panel = string.lower(strTitle)
         end)
-		for i = 1, 3 do
-			surface.PlaySound("shitty/tap_depress.wav")
-		end
     end
 
     function btn:Think()
         self.HoverLerp = LerpFT(0.2, self.HoverLerp or 0, (self:IsHovered() or (IsValid(self:GetChild(0)) and self:GetChild(0):IsHovered()) or (IsValid(self:GetChild(0)) and IsValid(self:GetChild(0):GetChild(0)) and self:GetChild(0):GetChild(0):IsHovered())) and 1 or 0)
+
+        if (self:IsHovered() or (IsValid(self:GetChild(0)) and self:GetChild(0):IsHovered()) or (IsValid(self:GetChild(0)) and IsValid(self:GetChild(0):GetChild(0)) and self:GetChild(0):GetChild(0):IsHovered())) and not lastHovered then
+            surface.PlaySound(sound_hover)
+        end
+        lastHovered = (self:IsHovered() or (IsValid(self:GetChild(0)) and self:GetChild(0):IsHovered()) or (IsValid(self:GetChild(0)) and IsValid(self:GetChild(0):GetChild(0)) and self:GetChild(0):GetChild(0):IsHovered()))
 
         local v = self.HoverLerp
         self:SetTextColor(self.RColor:Lerp(red_select, v))
 
         local targetText = (self:IsHovered()) and string.upper(strTitle) or strTitle
         local crw = self:GetText()
-
+        
         if (crw ~= targetText) or (curent_panel == string.lower(strTitle)) then
             local ntxt = ""
             local will_text = (curent_panel == string.lower(strTitle) and not strTitle == 'Traitor Role') and '[ '..string.upper(strTitle)..' ]' or strTitle
@@ -308,9 +369,6 @@ function PANEL:AddSelect( pParent, strTitle, tbl )
                     ntxt = ntxt .. char
                 end
             end
-			if self:GetText() ~= ntxt then
-				surface.PlaySound("shitty/tap-resonant.wav")
-			end
             self:SetText(ntxt)
         end
         self:SizeToContents()
@@ -318,7 +376,12 @@ function PANEL:AddSelect( pParent, strTitle, tbl )
 end
 
 function PANEL:Close()
-    self:AlphaTo( 0, 0.1, 0, function() self:Remove() end)
+    self:AlphaTo(0, 0.3, 0, function() 
+        if IsValid(self) then
+            self:Remove()
+        end
+    end)
+    
     self:SetKeyboardInputEnabled(false)
     self:SetMouseInputEnabled(false)
 end
